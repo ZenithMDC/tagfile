@@ -1,0 +1,7 @@
+DML1
+
+// Eliminate awkward volumetric spheres and cones.
++ObjProp "HackLight" "HwtlLight"
+{
+    "volume" 0.0
+}
