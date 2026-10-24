@@ -156,9 +156,9 @@ def get_face_positions(faces, br):
                         face_positions.append({'ul': face_ul, 'lr': face_lr})
                     #print()
                 case _:
-                    print('[W:%s] Ignoring unhandled "%s" primitive. br_id: %d' % (inspect.currentframe().f_code.co_name, tagfile.br_sprim_names[sprim_type], br['br_id']))
+                    print('[W:%s] Ignoring unhandled "%s" special primitive. br_id: %d' % (inspect.currentframe().f_code.co_name, tagfile.get_br_sprim_name(sprim_type), br['br_id']))
         case _:
-            print('[W:%s] Ignoring unhandled "%s" primitive. br_id: %d' % (inspect.currentframe().f_code.co_name, tagfile.br_prim_names[prim_type], br['br_id']))
+            print('[W:%s] Ignoring unhandled "%s" primitive. br_id: %d' % (inspect.currentframe().f_code.co_name, tagfile.get_br_prim_name(prim_type), br['br_id']))
     return face_positions
 
 def get_window_lights(window_positions, window_light_candidates, inner_bound, outer_bound):

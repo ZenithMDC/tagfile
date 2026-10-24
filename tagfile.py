@@ -41,9 +41,6 @@ BR_SPRIM_WEDGE = 7
 BR_SPRIM_LINE  = 8
 BR_SPRIM_LIGHT = 9
 
-br_prim_names = {BR_PRIM_SPECIAL: 'Special', BR_PRIM_CYLINDER: 'Cylinder', BR_PRIM_PYRAMID: 'Pyramid', BR_PRIM_CORNERPYR: 'Corner-Apex Pyramid'}
-br_sprim_names = {BR_SPRIM_CUBE: 'Cube', BR_SPRIM_DODEC: 'Dodecahedron', BR_SPRIM_WEDGE: 'Wedge', BR_SPRIM_LINE: 'Line', BR_SPRIM_LIGHT: 'Light'}
-
 def fixang_to_radians(fixang):
     return fixang * tau / 65536
 
@@ -54,6 +51,21 @@ def get_br_prim_type(primal_id):
     if prim_type == BR_PRIM_SPECIAL:
         sprim_type = primal_id
     return prim_type, sprim_type
+
+def get_br_prim_name(prim_type):
+    br_prim_names = {BR_PRIM_SPECIAL: 'Special', BR_PRIM_CYLINDER: 'Cylinder', BR_PRIM_PYRAMID: 'Pyramid', BR_PRIM_CORNERPYR: 'Corner-Apex Pyramid'}
+    try:
+        return br_prim_names[prim_type]
+    except KeyError:
+        return 'Unknown'+str(prim_type)
+
+def get_br_sprim_name(sprim_type):
+    br_sprim_names = {BR_SPRIM_CUBE: 'Cube', BR_SPRIM_DODEC: 'Dodecahedron', BR_SPRIM_WEDGE: 'Wedge', BR_SPRIM_LINE: 'Line', BR_SPRIM_LIGHT: 'Light'}
+    try:
+        return br_sprim_names[sprim_type]
+    except KeyError:
+        return 'Unknown'+str(sprim_type)
+
 
 def list_tags(fp):
     for tag in get_region('', fp):
