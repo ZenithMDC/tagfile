@@ -5,7 +5,11 @@ With NewDark 1.29, a new variant of the engine (HWTL) was released featuring dyn
 You need Python 3.10+ installed.
 
 ## How does it work?
-Animlightify takes a single argument, which is the mission file that you wish to process. When it finishes, it will output two files: `animlight.dml` and `animlight.cmd`. Via `animlight.dml`, objects with light properties will gain animlight properties and have their original light properties removed. New objects with animlight properties will be created for each brush light. `animlight.cmd` is responsible for removing all (now redundant) brush lights and automatically relighting the level. Inside Dromed, load the mission and type into the commandline box: `run <path-to-animlight.cmd>`. You must not put the path inside quotes, even if it contains spaces. Press `enter` and Dromed will do the real processing. When it finishes, save the mission to some other location (unless you want the changes to be permanent). A config file (`animlight.cfg`) will be written to disk which will allow you to override certain variables, if you so desire.
+Animlightify takes a single argument, which is the mission file that you wish to process. When it finishes, it will output two files: `animlight.dml` and `animlight.cmd`. Via `animlight.dml`, objects with light properties will gain animlight properties and have their original light properties removed. New objects with animlight properties will be created for each brush light. `animlight.cmd` is responsible for removing all (now redundant) brush lights and automatically relighting the level. Inside Dromed, load the mission and type into the commandline box: `run <path-to-animlight.cmd>`. You must not put the path inside quotes, even if it contains spaces.
+
+Optional: Animlightify will output the path you will need for the `run` command, so, there's another option if you don't wish to type it out yourself: edit `loc_hist.hst` (located in the Thief install root) and overwrite (copy & paste over) the final entry. Save it. Then, open Dromed and, inside the commandline box, just press TAB once and the relevant command should appear.
+
+Press ENTER and Dromed will do the real processing. When it finishes, save the mission to some other location (unless you want the changes to be permanent). A config file (`animlight.cfg`) will be written to disk which will allow you to override certain variables, if you so desire.
 
 ### Important
 * For all cases, `gamesys.dml` must be in a directory specified in `mod_path`
