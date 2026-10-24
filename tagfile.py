@@ -66,7 +66,6 @@ def get_br_sprim_name(sprim_type):
     except KeyError:
         return 'Unknown'+str(sprim_type)
 
-
 def list_tags(fp):
     for tag in get_region('', fp):
         print(tag)
@@ -74,9 +73,10 @@ def list_tags(fp):
 def get_region(tagname, fp):
     tags = []
 
+    tag_name_max = 12
     tag_len = 24 # TagName(12) + MajorVer(4) + MinorVer(4) + ???(4)
     nice_tagname = tagname
-    tagname += '\x00' * (12 - len(tagname))
+    tagname += '\x00' * (tag_name_max - len(tagname))
     tagname = tagname.encode()
     found_tagname = False
 
@@ -104,9 +104,12 @@ def get_region(tagname, fp):
         print('[E:%s] There aren\'t any %s tags in this mission.' % (inspect.currentframe().f_code.co_name, nice_tagname))
         sys.exit(1)
 
-    fp.seek(region_off + tag_len, os.SEEK_SET)
+    fp.seek(region_off + tag_name_max, os.SEEK_SET)
+    ver_maj = struct.unpack('<I', fp.read(4))[0]
+    ver_min = struct.unpack('<I', fp.read(4))[0]
+    fp.seek(4, os.SEEK_CUR)
     end = region_off+region_len+tag_len
-    return fp, end
+    return fp, end, ver_maj, ver_min
 
 # These fields are named horribly... For the sake of clarification:
 #     tx['count'] is the number of textures
@@ -125,7 +128,8 @@ def get_region(tagname, fp):
 #     'CITY' is tx['tokens'][tx['tok_names'][0]['tokens'][1]],
 # and the remainder of tx['tok_names'][0]['tokens'] is unused (0's).
 def parse_txlist(fp):
-    fp, end = get_region('TXLIST', fp)
+    fp, end, ver_maj, ver_min = get_region('TXLIST', fp)
+    #print('%-12s %u.%u' % ('TXLIST', ver_maj, ver_min))
     max_tok_len = 16
     max_tokens_per = 4
     max_name_len = 15
@@ -151,7 +155,8 @@ def parse_txlist(fp):
     return tx
 
 def parse_lmetaprop(fp):
-    fp, end = get_region('L$MetaProp', fp)
+    fp, end, ver_maj, ver_min = get_region('L$MetaProp', fp)
+    #print('%-12s %u.%u' % ('L$MetaProp', ver_maj, ver_min))
     mps = []
     while fp.tell() < end:
         mp = dict()
@@ -163,10 +168,14 @@ def parse_lmetaprop(fp):
     return mps
 
 def parse_plight(fp):
-    fp, end = get_region('P$Light', fp)
+    fp, end, ver_maj, ver_min = get_region('P$Light', fp)
+    #print('%-12s %u.%u' % ('P$Light', ver_maj, ver_min))
     lts = []
     while fp.tell() < end:
         lt = dict()
+        if ver_maj < 2 or ver_min < 28:
+            print('[E:%s] Versions below 2.28 are currently unsupported.' % inspect.currentframe().f_code.co_name)
+            sys.exit(1)
         lt['obj_id']       = struct.unpack('<i', fp.read(4))[0]
         lt['len']          = struct.unpack('<I', fp.read(4))[0]
         lt['brightness']   = struct.unpack('<f', fp.read(4))[0]
@@ -182,7 +191,8 @@ def parse_plight(fp):
     return lts
 
 def parse_obj_map(fp):
-    fp, end = get_region('OBJ_MAP', fp)
+    fp, end, ver_maj, ver_min = get_region('OBJ_MAP', fp)
+    #print('%-12s %u.%u' % ('OBJ_MAP', ver_maj, ver_min))
     oms = []
     while fp.tell() < end:
         om = dict()
@@ -193,11 +203,13 @@ def parse_obj_map(fp):
     return oms
 
 def parse_gam_file(fp):
-    fp, end = get_region('GAM_FILE', fp)
+    fp, end, ver_maj, ver_min = get_region('GAM_FILE', fp)
+    #print('%-12s %u.%u' % ('GAM_FILE', ver_maj, ver_min))
     return fp.read(256).split(b'\x00')[0].decode('utf8')
 
 def parse_brlist(fp):
-    fp, end = get_region('BRLIST', fp)
+    fp, end, ver_maj, ver_min = get_region('BRLIST', fp)
+    #print('%-12s %u.%u' % ('BRLIST', ver_maj, ver_min))
     brs = []
     prev_br_id = 1
     while fp.tell() < end:

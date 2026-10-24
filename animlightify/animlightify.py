@@ -240,7 +240,6 @@ def get_window_lights(window_positions, window_light_candidates, inner_bound, ou
 
     return window_lights
 
-
 def get_window_positions(brlist, glass_txs):
     window_positions = []
     for br in brlist:
