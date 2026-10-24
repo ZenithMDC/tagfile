@@ -1,3 +1,4 @@
+import os
 from math import *
 
 def dot_product(a, b):
@@ -69,3 +70,18 @@ def point_intersects_aabb(point, aabb_max, aabb_min, verbose=False):
         print('point:   %.02f %.02f %.02f' % (point[0], point[1], point[2]))
         print(intersection)
     return intersection
+
+def read_config(filename):
+    config = dict()
+    if os.path.exists(filename):
+        with open(filename, 'r') as fp:
+            for line in fp:
+                line = line.strip()
+                if not line or line[0] == '#':
+                    continue
+                key = line.split('=')[0].strip()
+                value = line.split('=')[1].strip()
+                config[key] = float(value)
+    else:
+        return None
+    return config

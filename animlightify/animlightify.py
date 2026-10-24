@@ -18,7 +18,6 @@
 #
 
 # TODO: Implement brush primitives other than cube in get_face_positions.
-# TODO: Make inner_bound configurable for determining window lights.
 # TODO: Exclude SpotLightPoint objects from window light candidacy.
 
 import os
@@ -308,6 +307,23 @@ def get_light_type_id(light):
         return 'br_id'
 
 def main(args):
+    config_name = 'animlightify.cfg'
+    config = read_config(config_name)
+    if config == None:
+        print('Writing "%s".' % config_name)
+        with open(config_name, 'w') as fp:
+            config = dict()
+            fp.write('# Uncomment any of the following config vars to override them.\n')
+            fp.write('\n')
+            fp.write('# If a window light candidate is within this boundary, it will be considered a window light.\n')
+            fp.write('#inner_bound = 2.1\n')
+            fp.write('\n')
+            fp.write('# Boundary for a brush/hack light to be considered a window light candidate.\n')
+            fp.write('#outer_bound = 10.0\n')
+            fp.write('\n')
+            fp.write('# Volumetric fog magnitude for window lights.\n')
+            fp.write('#wl_volume = 0.5\n')
+
     if len(args) < 2:
         print('[E:%s] Specify the mission.' % inspect.currentframe().f_code.co_name)
         return 1
@@ -319,8 +335,9 @@ def main(args):
     dml.append('DML1')
     dml.append('')
     fmt = '    %-27s %s'
-    inner_bound = 2.1
-    outer_bound = 10.0
+    inner_bound = 2.1  if 'inner_bound' not in config.keys() else config['inner_bound']
+    outer_bound = 10.0 if 'outer_bound' not in config.keys() else config['outer_bound']
+    wl_volume   = 0.5  if 'wl_volume'   not in config.keys() else config['wl_volume']
 
     mis = args[1]
     dirname = os.path.dirname(mis)
@@ -389,7 +406,7 @@ def main(args):
             if br['br_id'] == window_brlight['br_id']:
                 dml.append('    +ObjProp "HwtlLight"')
                 dml.append('    {')
-                dml.append('    ' + fmt % ('"volume"', 0.5))
+                dml.append('    ' + fmt % ('"volume"', wl_volume))
                 dml.append('    }')
                 break
         if br['sz']['w'] or br['sz']['h']:
@@ -426,7 +443,7 @@ def main(args):
             if obj['obj_id'] == window_plight['obj_id']:
                 dml.append('+ObjProp %s "HwtlLight"' % obj['obj_id'])
                 dml.append('{')
-                dml.append(fmt % ('"volume"', 0.5))
+                dml.append(fmt % ('"volume"', wl_volume))
                 dml.append('}')
                 break
         dml.append('')
@@ -446,6 +463,7 @@ def main(args):
 
     print('%u brush light(s) and %u light prop(s) to be replaced.' % (len(brlights), len(light_objs)))
     print('%u brush light(s) and %u hack light(s) detected as window lights.' % (len(window_brlights), len(window_plights)))
+    print('Window light params: outer_bound=%.02f, inner_bound=%.02f, wl_volume=%.02f' % (outer_bound, inner_bound, wl_volume))
     print()
     print('Run animlightify.cmd in Dromed by using the command prompt:\nrun %s/animlightify.cmd' % cwd)
     print()
