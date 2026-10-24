@@ -416,8 +416,10 @@ def main(args):
         dml.append(fmt % ('"Mode"', '"maximum brightness"'))
         dml.append(fmt % ('"max brightness"', obj['brightness']))
         dml.append(fmt % ('"radius (0 for infinite)"', obj['radius']))
-        dml.append(fmt % ('"inner radius (0 for none)"', obj['inner_radius']))
-        dml.append(fmt % ('"quad lit"', obj['quad']))
+        if 'inner_radius' in obj.keys():
+            dml.append(fmt % ('"inner radius (0 for none)"', obj['inner_radius']))
+        if 'quad' in obj.keys():
+            dml.append(fmt % ('"quad lit"', obj['quad']))
         dml.append(fmt % ('"offset from object"', '%f, %f, %f' % (obj['offset']['x'], obj['offset']['y'], obj['offset']['z'])))
         dml.append('}')
         for window_plight in window_plights:

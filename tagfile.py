@@ -172,21 +172,27 @@ def parse_plight(fp):
     #print('%-12s %u.%u' % ('P$Light', ver_maj, ver_min))
     lts = []
     while fp.tell() < end:
+        mark = fp.tell()
         lt = dict()
-        if ver_maj < 2 or ver_min < 28:
-            print('[E:%s] Versions below 2.28 are currently unsupported.' % inspect.currentframe().f_code.co_name)
-            sys.exit(1)
         lt['obj_id']       = struct.unpack('<i', fp.read(4))[0]
-        lt['len']          = struct.unpack('<I', fp.read(4))[0]
-        lt['brightness']   = struct.unpack('<f', fp.read(4))[0]
+        lt['len']          = struct.unpack('<I', fp.read(4))[0]; _len = lt['len']
+        lt['brightness']   = struct.unpack('<f', fp.read(4))[0]; _len -= 4
         offset = dict()
-        offset['x']        = struct.unpack('<f', fp.read(4))[0]
-        offset['y']        = struct.unpack('<f', fp.read(4))[0]
-        offset['z']        = struct.unpack('<f', fp.read(4))[0]
+        offset['x']        = struct.unpack('<f', fp.read(4))[0]; _len -= 4
+        offset['y']        = struct.unpack('<f', fp.read(4))[0]; _len -= 4
+        offset['z']        = struct.unpack('<f', fp.read(4))[0]; _len -= 4
         lt['offset'] = offset
-        lt['radius']       = struct.unpack('<f', fp.read(4))[0]
-        lt['quad']    = bool(struct.unpack('<I', fp.read(4))[0])
-        lt['inner_radius'] = struct.unpack('<f', fp.read(4))[0]
+        lt['radius']       = struct.unpack('<f', fp.read(4))[0]; _len -= 4
+        if ver_maj >= 2 and ver_min > 20:
+            lt['quad']         = bool(struct.unpack('<I', fp.read(4))[0]); _len -= 4
+            lt['inner_radius'] = struct.unpack('<f', fp.read(4))[0]; _len -= 4
+        if _len != 0:
+            print('[E:%s] The P$Light parser poked its head out and was ended quick-like...' % inspect.currentframe().f_code.co_name)
+            print('The fatal move occurred while it was parsing object %s at %u.' % (lt['obj_id'], mark))
+            print('May it rest in peace eternal.')
+            print()
+            pprint.pprint(lt)
+            sys.exit(1)
         lts.append(lt)
     return lts
 
