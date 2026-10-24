@@ -234,7 +234,7 @@ def parse_brlist(fp):
         br['group_id']       = struct.unpack('<b', fp.read(1))[0]
         br['pad0']           = struct.unpack('<i', fp.read(4))[0]
         txs = []
-        if br['media'] not in [BR_AREA, BR_OBJECT, BR_FLOW, BR_ROOM]:
+        if br['media'] >= BR_TERRAIN:
             for i in range(br['num_faces']):
                 texinfo = dict()
                 texinfo['tx_id']    = struct.unpack('<h', fp.read(2))[0]
