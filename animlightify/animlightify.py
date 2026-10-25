@@ -23,6 +23,7 @@
 import os
 import sys
 #import pprint
+import shutil
 import inspect
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -64,14 +65,14 @@ def create_box_around_brush(br, box_size):
 def filter_objs_by_obj_ids(obj_ids, objs):
     return [obj for obj in objs if obj['obj_id'] in obj_ids]
 
-def obj_ids_to_names(mps, oms):
+def obj_ids_to_names(mps, sns):
     id_names = dict()
-    for om in oms:
-        id_names[om['obj_id']] = om['name']
+    for sn in sns:
+        id_names[sn['obj_id']] = sn['name']
     for mp in mps:
-        for om in oms:
-            if mp['dest'] == om['obj_id']:
-                id_names[mp['source']] = om['name']
+        for sn in sns:
+            if mp['dest'] == sn['obj_id']:
+                id_names[mp['source']] = sn['name']
     return id_names
 
 def add_name_to_objs_by_id(objs, id_key, id_names):
@@ -247,13 +248,13 @@ def get_window_positions(brlist, glass_txs):
                 window_positions.append({'face_pos': get_face_positions(faces, br), 'faces': faces, 'brush': br})
     return window_positions
 
-def get_obj_ids_by_archetype_name(archetype_name, oms, mps, mps_gam, id_names):
+def get_obj_ids_by_archetype_name(archetype_name, sns, mps, mps_gam, id_names):
     abstract_ids = []
     concrete_ids = []
 
-    for om in oms:
-        if om['name'] == archetype_name:
-            target_id = om['obj_id']
+    for sn in sns:
+        if sn['name'] == archetype_name:
+            target_id = sn['obj_id']
             break
 
     for mp in mps_gam:
@@ -267,13 +268,13 @@ def get_obj_ids_by_archetype_name(archetype_name, oms, mps, mps_gam, id_names):
 
     return concrete_ids
 
-def get_tx_ids_by_archetype_name(archetype_name, oms, mps_gam, id_names, txlist):
+def get_tx_ids_by_archetype_name(archetype_name, sns, mps_gam, id_names, txlist):
     tx_names = []
     tx_ids = []
 
-    for om in oms:
-        if om['name'] == archetype_name:
-            target_id = om['obj_id']
+    for sn in sns:
+        if sn['name'] == archetype_name:
+            target_id = sn['obj_id']
             break
 
     for mp in mps_gam:
@@ -306,6 +307,28 @@ def get_light_type_id(light):
     elif 'br_id' in light:
         return 'br_id'
 
+def get_dark_gam_version(oms):
+    for om in oms:
+        if om['name'] == 'EvilGarrett' and om['obj_id'] == -2405:
+            return 2
+    return 1
+
+def get_gamesys_path(dirname, t1_root, t2_root, oms, fp):
+    gam_name = tagfile.parse_gam_file(fp)
+    gam_path = dirname + '/' + tagfile.parse_gam_file(fp)
+    if not os.path.exists(gam_path):
+        gam_ver = get_dark_gam_version(oms)
+        if gam_ver == 1 and t1_root:
+            gam_path = t1_root + '/' + gam_name
+        elif gam_ver == 2 and t2_root:
+            gam_path = t2_root + '/' + gam_name
+        else:
+            print('[E:%s] Cannot find gamesys "%s".' % (inspect.currentframe().f_code.co_name, gam_path))
+            print('You must specify where Thief %u\'s root directory is in "animlightify.cfg". Ex:' % gam_ver)
+            print('t%u_root = "<path/to/thief%u>"' % (gam_ver, gam_ver))
+            sys.exit(1)
+    return gam_path
+
 def main(args):
     config_name = 'animlightify.cfg'
     config = read_config(config_name)
@@ -313,16 +336,7 @@ def main(args):
         print('Writing "%s".' % config_name)
         with open(config_name, 'w') as fp:
             config = dict()
-            fp.write('# Uncomment any of the following config vars to override them.\n')
-            fp.write('\n')
-            fp.write('# If a window light candidate is within this boundary, it will be considered a window light.\n')
-            fp.write('#inner_bound = 2.1\n')
-            fp.write('\n')
-            fp.write('# Boundary for a brush/hack light to be considered a window light candidate.\n')
-            fp.write('#outer_bound = 10.0\n')
-            fp.write('\n')
-            fp.write('# Volumetric fog magnitude for window lights.\n')
-            fp.write('#wl_volume = 0.5\n')
+            shutil.copy2('sample.cfg', config_name)
 
     if len(args) < 2:
         print('[E:%s] Specify the mission.' % inspect.currentframe().f_code.co_name)
@@ -335,33 +349,36 @@ def main(args):
     dml.append('DML1')
     dml.append('')
     fmt = '    %-27s %s'
-    inner_bound = 2.1  if 'inner_bound' not in config.keys() else config['inner_bound']
-    outer_bound = 10.0 if 'outer_bound' not in config.keys() else config['outer_bound']
-    wl_volume   = 0.5  if 'wl_volume'   not in config.keys() else config['wl_volume']
+    inner_bound = 2.1  if 'inner_bound' not in config.keys() else float(config['inner_bound'])
+    outer_bound = 10.0 if 'outer_bound' not in config.keys() else float(config['outer_bound'])
+    wl_volume   = 0.5  if 'wl_volume'   not in config.keys() else float(config['wl_volume'])
+    t1_root     = ''   if 't1_root'     not in config.keys() else config['t1_root'].replace('\\', '/').rstrip('/')
+    t2_root     = ''   if 't2_root'     not in config.keys() else config['t2_root'].replace('\\', '/').rstrip('/')
 
     mis = args[1]
     dirname = os.path.dirname(mis)
     fp = open(mis, 'rb')
     tagfile.check_integrity(fp)
 
-    mps = tagfile.parse_lmetaprop(fp)
     oms = tagfile.parse_obj_map(fp)
-    id_names = obj_ids_to_names(mps, oms)
+    with open(get_gamesys_path(dirname, t1_root, t2_root, oms, fp), 'rb') as fp_gam:
+        mps_gam = tagfile.parse_lmetaprop(fp_gam)
+        sns_gam = tagfile.parse_psymname(fp_gam)
+
+    mps = tagfile.parse_lmetaprop(fp)
+    id_names = obj_ids_to_names(mps, sns_gam)
 
     light_objs = tagfile.parse_plight(fp)
     light_objs = remove_zero_brightness_objs(light_objs)
     light_objs = add_name_to_objs_by_id(light_objs, 'obj_id', id_names)
     light_objs = sorted(light_objs, key=lambda d: d['name'])
 
-    with open(dirname + '/' + tagfile.parse_gam_file(fp), 'rb') as fp_gam:
-        mps_gam = tagfile.parse_lmetaprop(fp_gam)
-
     brushes = tagfile.parse_brlist(fp)
     textures = tagfile.parse_txlist(fp)
-    glass_txs = get_tx_ids_by_archetype_name('GlassTex', oms, mps_gam, id_names, textures)
+    glass_txs = get_tx_ids_by_archetype_name('GlassTex', sns_gam, mps_gam, id_names, textures)
     window_positions = get_window_positions(brushes, glass_txs)
 
-    hacklight_obj_ids = get_obj_ids_by_archetype_name('HackLight', oms, mps, mps_gam, id_names)
+    hacklight_obj_ids = get_obj_ids_by_archetype_name('HackLight', sns_gam, mps, mps_gam, id_names)
     light_objs = add_pos_to_objs_from_brlist(light_objs, brushes)
     plights = filter_objs_by_obj_ids(hacklight_obj_ids, light_objs)
     brlights = tagfile.filter_br_by_type(tagfile.BR_LIGHT, brushes)

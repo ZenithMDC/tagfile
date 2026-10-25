@@ -196,6 +196,19 @@ def parse_plight(fp):
         lts.append(lt)
     return lts
 
+def parse_psymname(fp):
+    fp, end, ver_maj, ver_min = get_region('P$SymName', fp)
+    #print('%-12s %u.%u' % ('P$SymName', ver_maj, ver_min))
+    sns = []
+    while fp.tell() < end:
+        sn = dict()
+        sn['obj_id'] = struct.unpack('<i', fp.read(4))[0]
+        sn['len']    = struct.unpack('<I', fp.read(4))[0]
+        sn['size']   = struct.unpack('<I', fp.read(4))[0]
+        sn['name']   = fp.read(sn['size'])[:-1].decode('utf8')
+        sns.append(sn)
+    return sns
+
 def parse_obj_map(fp):
     fp, end, ver_maj, ver_min = get_region('OBJ_MAP', fp)
     #print('%-12s %u.%u' % ('OBJ_MAP', ver_maj, ver_min))
@@ -306,6 +319,7 @@ def main(args):
     funcs = {'parse_txlist':    parse_txlist,
              'parse_lmetaprop': parse_lmetaprop,
              'parse_plight':    parse_plight,
+             'parse_psymname':  parse_psymname,
              'parse_obj_map':   parse_obj_map,
              'parse_gam_file':  parse_gam_file,
              'parse_brlist':    parse_brlist,

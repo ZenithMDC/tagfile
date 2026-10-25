@@ -9,7 +9,7 @@ Animlightify takes a single argument, which is the mission file that you wish to
 
 Optional: Animlightify will output the path you will need for the `run` command, so, there's another option if you don't wish to type it out yourself: edit `loc_hist.hst` (located in the Thief install root) and overwrite (copy & paste over) the final entry. Save it. Then, open Dromed and, inside the commandline box, just press TAB once and the relevant command should appear.
 
-Press ENTER and Dromed will do the real processing. When it finishes, save the mission to some other location (unless you want the changes to be permanent). A config file (`animlight.cfg`) will be written to disk which will allow you to override certain variables, if you so desire.
+Press ENTER and Dromed will do the real processing. When it finishes, save the mission to some other location (unless you want the changes to be permanent). A config file (`animlight.cfg`) will be written to disk which will allow you to override certain variables, if you so desire. Additionally, `sample.cfg` is a version-controlled config file, which is subject to change, so you're advised to check this file per update to learn about any new config vars.
 
 ### Important
 * For all cases, `gamesys.dml` must be in a directory specified in `mod_path`

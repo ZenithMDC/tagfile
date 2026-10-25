@@ -93,8 +93,8 @@ def read_config(filename):
                 if not line or line[0] == '#':
                     continue
                 key = line.split('=')[0].strip()
-                value = line.split('=')[1].strip()
-                config[key] = float(value)
+                value = line.split('=')[1].strip().replace('"', '')
+                config[key] = value
     else:
         return None
     return config
