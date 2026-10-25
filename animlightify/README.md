@@ -17,7 +17,7 @@ inside `cam_mod.ini`. It doesn't necessarily need to reside in the same director
     * For OMs, the modified mission must be in a directory specified in `mod_path` inside `cam_mod.ini`.
     * For FMs, I'm currently unsure what the proper course of action is, since the mod load order is different when an FM is loaded. Modifying `uber_mod_path` caused me tons of problems, so I'd recommend overwriting the FM. You can always reinstall the FM if you wish to revert it back to its unmodified form.
 
-Okay, here's a visual example of how `mod_path` should look be laid out:
+Okay, here's a visual example of how `mod_path` should be laid out:
 ```
 mod_path .\MODS\hwtl+<this-directory>+<modified-mission-directory>+<whatever-other-mods-you-have ...>
 ```
