@@ -1,4 +1,15 @@
 # Animlightify
+<table>
+  <tr>
+    <td>HWTL with Animlightify</td>
+    <td>HWTL without Animlightify</td>
+  </tr>
+  <tr>
+    <td><img src="https://i.imgur.com/xm7hLK8.jpeg"></td>
+    <td><img src="https://i.imgur.com/HiYkfTl.jpeg"></td>
+  </tr>
+</table>
+
 With NewDark 1.29, a new variant of the engine (HWTL) was released featuring dynamic shadows and volumetric fog, among other modern lighting techniques. However, these new features only affect animlights and dynamic lights, so, to take full advantage, missions with brush lights and static lights must be converted to animlights and relit, which is what Animlightify will perform automatically. It will also detect whether brush lights and hack lights are near windows, since those that are will be processed differently.
 
 ## Prerequisites
@@ -28,6 +39,17 @@ mod_path .\MODS\hwtl+C:\prj\tagfile\animlightify+.\MODS\Thief2 Fixed HWTL+.\MODS
 Where `C:\prj\tagfile\animlightify` is where this repo is (which contains `gamesys.dml`) and `.\MODS\Thief2 Fixed HWTL` is where I saved the modified OMs.
 
 ### Window light detection (and its limitations)
+<table>
+  <tr>
+    <td>Awkward volumetric cone without window light detection</td>
+    <td>Volumetric cone is disabled (too far away from window)</td>
+  </tr>
+  <tr>
+    <td><img src="https://i.imgur.com/7tRa153.jpeg"></td>
+    <td><img src="https://i.imgur.com/4QJZuir.jpeg"></td>
+  </tr>
+</table>
+
 Right, I guess I'll explain how this detection works. But first, I should justify its existence in the first place. Basically, there is a file included with this project called `gamesys.dml` that sets some default behavior for HTWL lights. All hack lights and (former) brush lights have their volumetric property set to 0, since they look extremely awkward just floating around in the air as spheres or cones. However, when they are placed near windows, the volumetric effect actually looks pleasant. Because of this, determining whether those lights are near a window becomes important. If a brush face's texture is derived from GlassTex, it's considered a window. There are two boundary checks: First, an outer box intersection test around the brush's origin, to eliminate lights that are too far away from the face in question. Second, an inner box intersection test around each GlassTex face, in which an intersecting light will be considered a window light, and thus have its volumetric effect applied in `animlightify.dml`.
 
 As for limitations:
