@@ -21,7 +21,8 @@ import sys
 import os
 import pprint
 from math import *
-import inspect
+
+from utils import *
 
 BR_TERRAIN =  0
 BR_LIGHT   = -1
@@ -101,7 +102,7 @@ def get_region(tagname, fp):
     if tagname[0] == 0:
         return tags
     if not found_tagname:
-        print('[E:%s] There aren\'t any %s tags in this mission.' % (inspect.currentframe().f_code.co_name, nice_tagname))
+        print_error('There aren\'t any %s tags in this mission.' % nice_tagname)
         sys.exit(1)
 
     fp.seek(region_off + tag_name_max, os.SEEK_SET)
@@ -187,7 +188,7 @@ def parse_plight(fp):
             lt['quad']         = bool(struct.unpack('<I', fp.read(4))[0]); _len -= 4
             lt['inner_radius'] = struct.unpack('<f', fp.read(4))[0]; _len -= 4
         if _len != 0:
-            print('[E:%s] The P$Light parser poked its head out and was ended quick-like...' % inspect.currentframe().f_code.co_name)
+            print_error('The P$Light parser poked its head out and was ended quick-like...')
             print('The fatal move occurred while it was parsing object %s at %u.' % (lt['obj_id'], mark))
             print('May it rest in peace eternal.')
             print()
@@ -289,7 +290,7 @@ def parse_brlist(fp):
         br['txs'] = txs
         brs.append(br)
         if br['br_id'] < prev_br_id:
-            print('[E:%s] Something\'s going down with the brlist parser...' % inspect.currentframe().f_code.co_name)
+            print_error('Something\'s going down with the brlist parser...')
             print('Okay. We gots us a problem at brush ' + str(len(brs)-1))
             print('Somewhere around position ' + str(mark))
             print('Current: ' + str(br['br_id']))
@@ -312,7 +313,7 @@ def check_integrity(fp):
     deadbeef = struct.unpack('4s', fp.read(4))[0]
     fp.seek(prev_off, os.SEEK_SET)
     if deadbeef != b'\xDE\xAD\xBE\xEF':
-        print('[E:%s] This tagfile is either corrupt or not a tagfile at all.' % inspect.currentframe().f_code.co_name)
+        print_error('This tagfile is either corrupt or not a tagfile at all.')
         sys.exit(1)
 
 def main(args):

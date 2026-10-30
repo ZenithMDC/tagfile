@@ -12,6 +12,7 @@
 # the License.
 
 import os
+import inspect
 from math import *
 
 def dot_product(a, b):
@@ -98,3 +99,9 @@ def read_config(filename):
     else:
         return None
     return config
+
+def print_error(msg):
+    print('[E:%s] %s' % (inspect.getouterframes(inspect.currentframe())[1].function, msg))
+
+def print_warning(msg):
+    print('[W:%s] %s' % (inspect.getouterframes(inspect.currentframe())[1].function, msg))

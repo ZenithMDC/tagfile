@@ -24,7 +24,6 @@ import os
 import sys
 #import pprint
 import shutil
-import inspect
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from utils import *
@@ -146,7 +145,7 @@ def get_face_positions(faces, br):
                                 face_ul = [br_pos[0]-br_sz[0], br_pos[1]-br_sz[1], br_pos[2]-br_sz[2]]
                                 face_lr = [br_pos[0]+br_sz[0], br_pos[1]+br_sz[1], face_ul[2]]
                             case _:
-                                print('[E:%s] Cube "%s" somehow has more then 6 faces...' % (inspect.currentframe().f_code.co_name, br['br_id']))
+                                print_error('Cube "%s" somehow has more then 6 faces...' % br['br_id'])
                                 sys.exit(1)
                         if not (br_ang[0] == 0 and br_ang[1] == 0 and br_ang[2] == 0):
                             face_ul, face_lr = apply_rotation_to_points([face_ul, face_lr], br_ang, br_pos)
@@ -156,9 +155,9 @@ def get_face_positions(faces, br):
                         face_positions.append({'ul': face_ul, 'lr': face_lr})
                     #print()
                 case _:
-                    print('[W:%s] Ignoring unhandled "%s" special primitive. br_id: %d' % (inspect.currentframe().f_code.co_name, tagfile.get_br_sprim_name(sprim_type), br['br_id']))
+                    print_warning('Ignoring unhandled "%s" special primitive. br_id: %d' % (tagfile.get_br_sprim_name(sprim_type), br['br_id']))
         case _:
-            print('[W:%s] Ignoring unhandled "%s" primitive. br_id: %d' % (inspect.currentframe().f_code.co_name, tagfile.get_br_prim_name(prim_type), br['br_id']))
+            print_warning('Ignoring unhandled "%s" primitive. br_id: %d' % (tagfile.get_br_prim_name(prim_type), br['br_id']))
     return face_positions
 
 def get_window_lights(window_positions, window_light_candidates, inner_bound, outer_bound):
@@ -323,7 +322,7 @@ def get_gamesys_path(dirname, t1_root, t2_root, oms, fp):
         elif gam_ver == 2 and t2_root:
             gam_path = t2_root + '/' + gam_name
         else:
-            print('[E:%s] Cannot find gamesys "%s".' % (inspect.currentframe().f_code.co_name, gam_path))
+            print_error('Cannot find gamesys "%s".' % gam_path)
             print('You must specify where Thief %u\'s root directory is in "animlightify.cfg". Ex:' % gam_ver)
             print('t%u_root = "<path/to/thief%u>"' % (gam_ver, gam_ver))
             sys.exit(1)
@@ -339,7 +338,7 @@ def main(args):
             shutil.copy2('sample.cfg', config_name)
 
     if len(args) < 2:
-        print('[E:%s] Specify the mission.' % inspect.currentframe().f_code.co_name)
+        print_error('Specify the mission.')
         return 1
 
     cwd = os.getcwd()
