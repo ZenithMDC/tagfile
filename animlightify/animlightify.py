@@ -395,8 +395,8 @@ def main(args):
             window_plights.append(wl)
         elif ltype == 'brlights':
             window_brlights.append(wl)
-    #pprint.pprint(window_plights)
-    #pprint.pprint(window_brlights)
+    #pprint.pp(window_plights)
+    #pprint.pp(window_brlights)
 
     # Handle replacing all brush lights with anim lights.
     comment = 'Replace all brush lights'

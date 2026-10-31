@@ -20,6 +20,7 @@ import struct
 import sys
 import os
 import pprint
+import base64
 from math import *
 
 from utils import *
@@ -68,17 +69,14 @@ def get_br_sprim_name(sprim_type):
         return 'Unknown'+str(sprim_type)
 
 def list_tags(fp):
-    for tag in get_region('', fp):
-        print(tag)
+    return [tag for tag in get_region('', fp)]
 
 def get_region(tagname, fp):
     tags = []
+    tagname = canonical_tagname(tagname)
 
     tag_name_max = 12
     tag_len = 24 # TagName(12) + MajorVer(4) + MinorVer(4) + ???(4)
-    nice_tagname = tagname
-    tagname += '\x00' * (tag_name_max - len(tagname))
-    tagname = tagname.encode()
     found_tagname = False
 
     fp.seek(0, os.SEEK_SET)
@@ -90,7 +88,7 @@ def get_region(tagname, fp):
         if tagname[0] == 0:
             region_off = struct.unpack('<I', fp.read(4))[0]
             region_len = struct.unpack('<I', fp.read(4))[0]
-            tags.append((toc_tag.split(b'\x00')[0].decode('utf8'), region_len))
+            tags.append((toc_tag, region_len))
         elif tagname == toc_tag:
             found_tagname = True
             region_off = struct.unpack('<I', fp.read(4))[0]
@@ -102,7 +100,7 @@ def get_region(tagname, fp):
     if tagname[0] == 0:
         return tags
     if not found_tagname:
-        print_error('There aren\'t any %s tags in this mission.' % nice_tagname)
+        print_error('There aren\'t any %s tags in this mission.' % tagname)
         sys.exit(1)
 
     fp.seek(region_off + tag_name_max, os.SEEK_SET)
@@ -128,8 +126,9 @@ def get_region(tagname, fp):
 #     'fam' is  tx['tokens'][tx['tok_names'][0]['tokens'][0]],
 #     'CITY' is tx['tokens'][tx['tok_names'][0]['tokens'][1]],
 # and the remainder of tx['tok_names'][0]['tokens'] is unused (0's).
-def parse_txlist(fp):
-    fp, end, ver_maj, ver_min = get_region('TXLIST', fp)
+def parse_txlist(fp, end=None, ver_maj=None, ver_min=None):
+    if end == None or ver_maj == None or ver_min == None:
+        fp, end, ver_maj, ver_min = get_region('TXLIST', fp)
     #print('%-12s %u.%u' % ('TXLIST', ver_maj, ver_min))
     max_tok_len = 16
     max_tokens_per = 4
@@ -140,7 +139,7 @@ def parse_txlist(fp):
     tx['tok_count']  = struct.unpack('<i', fp.read(4))[0]
     tokens = []
     for _ in range(tx['tok_count']):
-        tokens.append(struct.unpack('%us' % max_tok_len, fp.read(max_tok_len))[0].split(b'\x00')[0].decode('utf8'))
+        tokens.append(struct.unpack('%us' % max_tok_len, fp.read(max_tok_len))[0].split(b'\x00')[0].decode('latin1'))
     tx['tokens'] = tokens
     tok_names = []
     for _ in range(tx['count']):
@@ -149,14 +148,15 @@ def parse_txlist(fp):
         for __ in range(max_tokens_per):
             tn_toks.append(struct.unpack('<B', fp.read(1))[0])
         tn['tokens']   = tn_toks
-        tn['name']     = struct.unpack('%us' % max_name_len, fp.read(max_name_len))[0].split(b'\x00')[0].decode('utf8')
+        tn['name']     = struct.unpack('%us' % max_name_len, fp.read(max_name_len))[0].split(b'\x00')[0].decode('latin1')
         tn['reserved'] = struct.unpack('B', fp.read(1))[0]
         tok_names.append(tn)
     tx['tok_names'] = tok_names
     return tx
 
-def parse_lmetaprop(fp):
-    fp, end, ver_maj, ver_min = get_region('L$MetaProp', fp)
+def parse_lmetaprop(fp, end=None, ver_maj=None, ver_min=None):
+    if end == None or ver_maj == None or ver_min == None:
+        fp, end, ver_maj, ver_min = get_region('L$MetaProp', fp)
     #print('%-12s %u.%u' % ('L$MetaProp', ver_maj, ver_min))
     mps = []
     while fp.tell() < end:
@@ -168,8 +168,9 @@ def parse_lmetaprop(fp):
         mps.append(mp)
     return mps
 
-def parse_plight(fp):
-    fp, end, ver_maj, ver_min = get_region('P$Light', fp)
+def parse_plight(fp, end=None, ver_maj=None, ver_min=None):
+    if end == None or ver_maj == None or ver_min == None:
+        fp, end, ver_maj, ver_min = get_region('P$Light', fp)
     #print('%-12s %u.%u' % ('P$Light', ver_maj, ver_min))
     lts = []
     while fp.tell() < end:
@@ -192,13 +193,14 @@ def parse_plight(fp):
             print('The fatal move occurred while it was parsing object %s at %u.' % (lt['obj_id'], mark))
             print('May it rest in peace eternal.')
             print()
-            pprint.pprint(lt)
+            pprint.pp(lt)
             sys.exit(1)
         lts.append(lt)
     return lts
 
-def parse_psymname(fp):
-    fp, end, ver_maj, ver_min = get_region('P$SymName', fp)
+def parse_psymname(fp, end=None, ver_maj=None, ver_min=None):
+    if end == None or ver_maj == None or ver_min == None:
+        fp, end, ver_maj, ver_min = get_region('P$SymName', fp)
     #print('%-12s %u.%u' % ('P$SymName', ver_maj, ver_min))
     sns = []
     while fp.tell() < end:
@@ -206,29 +208,32 @@ def parse_psymname(fp):
         sn['obj_id'] = struct.unpack('<i', fp.read(4))[0]
         sn['len']    = struct.unpack('<I', fp.read(4))[0]
         sn['size']   = struct.unpack('<I', fp.read(4))[0]
-        sn['name']   = fp.read(sn['size'])[:-1].decode('utf8')
+        sn['name']   = fp.read(sn['size'])[:-1].decode('latin1')
         sns.append(sn)
     return sns
 
-def parse_obj_map(fp):
-    fp, end, ver_maj, ver_min = get_region('OBJ_MAP', fp)
+def parse_obj_map(fp, end=None, ver_maj=None, ver_min=None):
+    if end == None or ver_maj == None or ver_min == None:
+        fp, end, ver_maj, ver_min = get_region('OBJ_MAP', fp)
     #print('%-12s %u.%u' % ('OBJ_MAP', ver_maj, ver_min))
     oms = []
     while fp.tell() < end:
         om = dict()
         om['obj_id'] = struct.unpack('<i', fp.read(4))[0]
         om['size']   = struct.unpack('<I', fp.read(4))[0]
-        om['name']   = fp.read(om['size'])[:-1].decode('utf8')
+        om['name']   = fp.read(om['size'])[:-1].decode('latin1')
         oms.append(om)
     return oms
 
-def parse_gam_file(fp):
-    fp, end, ver_maj, ver_min = get_region('GAM_FILE', fp)
+def parse_gam_file(fp, end=None, ver_maj=None, ver_min=None):
+    if end == None or ver_maj == None or ver_min == None:
+        fp, end, ver_maj, ver_min = get_region('GAM_FILE', fp)
     #print('%-12s %u.%u' % ('GAM_FILE', ver_maj, ver_min))
-    return fp.read(256).split(b'\x00')[0].decode('utf8')
+    return fp.read(256).split(b'\x00')[0].decode('latin1')
 
-def parse_brlist(fp):
-    fp, end, ver_maj, ver_min = get_region('BRLIST', fp)
+def parse_brlist(fp, end=None, ver_maj=None, ver_min=None):
+    if end == None or ver_maj == None or ver_min == None:
+        fp, end, ver_maj, ver_min = get_region('BRLIST', fp)
     #print('%-12s %u.%u' % ('BRLIST', ver_maj, ver_min))
     brs = []
     prev_br_id = 1
@@ -296,10 +301,13 @@ def parse_brlist(fp):
             print('Current: ' + str(br['br_id']))
             print('Previous: ' + str(prev_br_id))
             print()
-            pprint.pprint(brs[-2])
+            pprint.pp(brs[-2])
             sys.exit(1)
         prev_br_id = br['br_id']
     return brs
+
+def parse_unimplemented(fp, _len):
+    return {'_base85': base64.b85encode(fp.read(_len)).decode('latin1')}
 
 def filter_br_by_type(brtype, brlist):
     if type(brtype) == int:
@@ -316,6 +324,57 @@ def check_integrity(fp):
         print_error('This tagfile is either corrupt or not a tagfile at all.')
         sys.exit(1)
 
+def to_dict(fp):
+    tag_dict = dict()
+    parse_tag = {
+        canonical_tagname('BRLIST'):     parse_brlist,
+        canonical_tagname('GAM_FILE'):   parse_gam_file,
+        canonical_tagname('OBJ_MAP'):    parse_obj_map,
+        canonical_tagname('P$SymName'):  parse_psymname,
+        canonical_tagname('P$Light'):    parse_plight,
+        canonical_tagname('L$MetaProp'): parse_lmetaprop,
+        canonical_tagname('TXLIST'):     parse_txlist
+    }
+
+    fp.seek(0, os.SEEK_SET)
+    toc_off = struct.unpack('<I', fp.read(4))[0]
+    fp.seek(toc_off, os.SEEK_SET)
+    toc_entries = struct.unpack('<I', fp.read(4))[0]
+    while toc_entries:
+        tagname = fp.read(12)
+        tag_off = struct.unpack('<I', fp.read(4))[0]
+        tag_len = struct.unpack('<I', fp.read(4))[0]
+        prev_pos = fp.tell()
+        fp.seek(tag_off+12, os.SEEK_SET)
+        ver_maj = struct.unpack('<I', fp.read(4))[0]
+        ver_min = struct.unpack('<I', fp.read(4))[0]
+        fp.seek(4, os.SEEK_CUR)
+        end = tag_off+tag_len+12
+        try:
+            parsed_tag = parse_tag[tagname](fp, end, ver_maj, ver_min)
+        except KeyError:
+            # We'll do something special like this for the AI tags eventually...
+            #if m := re.search(b'AI_+([0-9A-Fa-f]+)_+([0-9A-Fa-f]+)_+([0-9A-Fa-f]+)', tagname):
+            #    parse_ai(fp)
+            #else:
+            parsed_tag = parse_unimplemented(fp, tag_len)
+        tag_dict[tagname] = parsed_tag
+        fp.seek(prev_pos, os.SEEK_SET)
+        toc_entries -= 1
+
+    return tag_dict
+
+def canonical_tagname(name):
+    tagname_max = 12
+    name = name[0:tagname_max]
+    remaining_space = tagname_max - len(name)
+    if type(name) == str:
+        name += '\x00' * remaining_space
+        return name.encode('latin1')
+    else:
+        name += b'\x00' * remaining_space
+        return name
+
 def main(args):
     funcs = {'parse_txlist':    parse_txlist,
              'parse_lmetaprop': parse_lmetaprop,
@@ -325,6 +384,7 @@ def main(args):
              'parse_gam_file':  parse_gam_file,
              'parse_brlist':    parse_brlist,
              'list_tags':       list_tags,
+             'to_dict':         to_dict,
              'check_integrity': check_integrity}
 
     if len(args) < 3:
@@ -337,7 +397,7 @@ def main(args):
 
     with open(mis, 'rb') as fp:
         rv = func(fp)
-    pprint.pprint(rv)
+    pprint.pp(rv)
 
     return 0
 
