@@ -313,8 +313,8 @@ def get_dark_gam_version(oms):
     return 1
 
 def get_gamesys_path(dirname, t1_root, t2_root, oms, fp):
-    gam_name = tagfile.parse_gam_file(fp)
-    gam_path = dirname + '/' + tagfile.parse_gam_file(fp)
+    gam_name = tagfile.parse_gam_file(fp)['data']
+    gam_path = dirname + '/' + tagfile.parse_gam_file(fp)['data']
     if not os.path.exists(gam_path):
         gam_ver = get_dark_gam_version(oms)
         if gam_ver == 1 and t1_root:
@@ -359,21 +359,21 @@ def main(args):
     fp = open(mis, 'rb')
     tagfile.check_integrity(fp)
 
-    oms = tagfile.parse_obj_map(fp)
+    oms = tagfile.parse_obj_map(fp)['data']
     with open(get_gamesys_path(dirname, t1_root, t2_root, oms, fp), 'rb') as fp_gam:
-        mps_gam = tagfile.parse_lmetaprop(fp_gam)
-        sns_gam = tagfile.parse_psymname(fp_gam)
+        mps_gam = tagfile.parse_lmetaprop(fp_gam)['data']
+        sns_gam = tagfile.parse_psymname(fp_gam)['data']
 
-    mps = tagfile.parse_lmetaprop(fp)
+    mps = tagfile.parse_lmetaprop(fp)['data']
     id_names = obj_ids_to_names(mps, sns_gam)
 
-    light_objs = tagfile.parse_plight(fp)
+    light_objs = tagfile.parse_plight(fp)['data']
     light_objs = remove_zero_brightness_objs(light_objs)
     light_objs = add_name_to_objs_by_id(light_objs, 'obj_id', id_names)
     light_objs = sorted(light_objs, key=lambda d: d['name'])
 
-    brushes = tagfile.parse_brlist(fp)
-    textures = tagfile.parse_txlist(fp)
+    brushes = tagfile.parse_brlist(fp)['data']
+    textures = tagfile.parse_txlist(fp)['data']
     glass_txs = get_tx_ids_by_archetype_name('GlassTex', sns_gam, mps_gam, id_names, textures)
     window_positions = get_window_positions(brushes, glass_txs)
 
