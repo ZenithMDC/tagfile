@@ -13,14 +13,20 @@
 With NewDark 1.29, a new variant of the engine (HWTL) was released featuring dynamic shadows and volumetric fog, among other modern lighting techniques. However, these new features only affect animlights and dynamic lights, so, to take full advantage, missions with brush lights and static lights must be converted to animlights and relit, which is what Animlightify will perform automatically. It will also detect whether brush lights and hack lights are near windows, since those that are will be processed differently.
 
 ## Prerequisites
-You need Python 3.10+ installed.
+### Packaged exe variant
+* There are no prerequisites if you use the packaged exe from the Releases section. It's only been tested on x86\_64 Windows 10. Older Windows versions and other platforms will probably not work.
+### Python variant
+* You need Python 3.10+ installed.
 
 ## How does it work?
 Animlightify takes a single argument, which is the mission file that you wish to process. When it finishes, it will output two files: `animlight.dml` and `animlight.cmd`. Via `animlight.dml`, objects with light properties will gain animlight properties and have their original light properties removed. New objects with animlight properties will be created for each brush light. `animlight.cmd` is responsible for removing all (now redundant) brush lights and automatically relighting the level. Inside Dromed, load the mission and type into the commandline box: `run <path-to-animlight.cmd>`. You must not put the path inside quotes, even if it contains spaces.
 
 Optional: Animlightify will output the path you will need for the `run` command, so, there's another option if you don't wish to type it out yourself: edit `loc_hist.hst` (located in the Thief install root) and overwrite (copy & paste over) the final entry. Save it. Then, open Dromed and, inside the commandline box, just press TAB once and the relevant command should appear.
 
-Press ENTER and Dromed will do the real processing. When it finishes, save the mission to some other location (unless you want the changes to be permanent). A config file (`animlight.cfg`) will be written to disk which will allow you to override certain variables, if you so desire. Additionally, `sample.cfg` is a version-controlled config file, which is subject to change, so you're advised to check this file per update to learn about any new config vars.
+Press ENTER and Dromed will do the real processing. When it finishes, save the mission to some other location (unless you want the changes to be permanent). A config file (`animlightify.cfg`) will be written to disk which will allow you to override certain variables, if you so desire. There is no longer a good reason to add any comments to the config file. In GUI mode, the config file is very strictly managed and will be sanitized at program exit.
+
+### GUI
+Run Animlightify without specifying any arguments to access GUI mode. If you are using the packaged exe variant, just double-click on `Animlightify.exe`.
 
 ### Important
 * For all cases, `gamesys.dml` must be in a directory specified in `mod_path`

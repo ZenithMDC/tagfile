@@ -23,22 +23,106 @@
 import os
 import sys
 #import pprint
-import shutil
+import platform
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from utils import *
+import utils
 import tagfile
+
+# Number of update segments for the GUI progressbar.
+pb_num_segs = 6
+
+# Amount to increase the GUI progressbar by, per update segment.
+pb_incr = 100 / pb_num_segs
+
+def get_version(filename):
+    with open(filename, 'r') as fp:
+        version = dict(zip(['major', 'minor', 'patch'], [int(ver_part) for ver_part in fp.read().strip().split('.')]))
+        fp.seek(0, os.SEEK_SET)
+        version['string'] = fp.read()
+    return version
+
+version = get_version(utils.get_pyi_asset('VERSION'))
+
+config = {
+    't1_root': {
+        'default': '""',
+        'description': 'Root directories for Thief 1 & 2, respectively, which must be specified for FMs that use the default gamesys.',
+        'newline': False
+    },
+    't2_root': {
+        'default': '""',
+    },
+    'outer_bound': {
+        'default': 10.0,
+        'clamp': {'min' : 0.0},
+        'description': 'Boundary for a brush/hack light to be considered a window light candidate.'
+    },
+    'inner_bound': {
+        'default': 2.1,
+        'clamp': {'min': 0.0},
+        'description': 'If a window light candidate is within this boundary, it will be considered a window light.'
+    },
+    'wl_volume': {
+        'default': 0.5,
+        'clamp': {'min': 0.0, 'max': 1.0},
+        'description': 'Volumetric fog magnitude for window lights.'
+    },
+    'gui_width': {
+        'default': 640,
+        'description': 'GUI\'s stored width and height metrics.',
+        'newline': False
+    },
+    'gui_height': {
+        'default': 480
+    },
+    'gui_pos_x': {
+        'default': 10,
+        'description': 'GUI\'s stored X and Y positions. Only has effect if gui_position_mode is "Stored".',
+        'newline': False
+    },
+    'gui_pos_y': {
+        'default': 10
+    },
+    'gui_position_mode': {
+        'default': '"Centered"',
+        'options': {
+            'Centered': 'Centered on screen.',
+            'OS': 'Let the operating system decide.',
+            'Stored': 'Remember the position.'
+        },
+        'description': 'Where the GUI should be positioned when launched.'
+    },
+    'gui_auto_clear_log': {
+        'default': True,
+        'description': 'Automatically clear the log every time the Animlightify button is activated.'
+    }
+}
+
+config_name = 'animlightify.cfg'
+
+config, config_exists = utils.read_config(config_name, config)
+if not config_exists:
+    utils.write_config(config_name, config)
+    config, config_exists = utils.read_config(config_name, config)
+
+if platform.system() == 'Windows':
+    import tdetect
+    if config['t1_root']['value'] == '':
+        config['t1_root']['value'] = tdetect.report_first(tdetect.GAME[1]).replace('\\', '/')
+    if config['t2_root']['value'] == '':
+        config['t2_root']['value'] = tdetect.report_first(tdetect.GAME[2]).replace('\\', '/')
 
 def create_box_around_face(face, face_ul, face_lr, angle, box_size, origin, prim_type, sprim_type):
     face_max = [max(face_ul[0], face_lr[0]), max(face_ul[1], face_lr[1]), max(face_ul[2], face_lr[2])]
     face_min = [min(face_ul[0], face_lr[0]), min(face_ul[1], face_lr[1]), min(face_ul[2], face_lr[2])]
-    #print('face_max: %.02f %.02f %.02f' % (face_max[0], face_max[1], face_max[2]))
-    #print('face_min: %.02f %.02f %.02f' % (face_min[0], face_min[1], face_min[2]))
+    #utils.log_print(f'face_max: {face_max[0]} {face_max[1]} {face_max[2]}')
+    #utils.log_print(f'face_min: {face_min[0]} {face_min[1]} {face_min[2]}'))
     if prim_type == tagfile.BR_PRIM_SPECIAL and sprim_type == tagfile.BR_SPRIM_CUBE:
         box_max = [face_max[0]+box_size, face_max[1]+box_size, face_max[2]+box_size]
         box_min = [face_min[0]-box_size, face_min[1]-box_size, face_min[2]-box_size]
         if not (angle[0] == 0 and angle[1] == 0 and angle[2] == 0):
-            box_max, box_min = apply_rotation_to_points([box_max, box_min], angle, origin)
+            box_max, box_min = utils.apply_rotation_to_points([box_max, box_min], angle, origin)
     return {'pos': origin, 'max': box_max, 'min': box_min, 'ang': angle}
 
 def create_box_around_brush(br, box_size):
@@ -55,10 +139,10 @@ def create_box_around_brush(br, box_size):
     box_min = [br_pos[0]-box_sz[0], br_pos[1]-box_sz[1], br_pos[2]-box_sz[2]]
 
     if not (br_ang[0] == 0 and br_ang[1] == 0 and br_ang[2] == 0):
-        box_max, box_min = apply_rotation_to_points([box_max, box_min], br_ang, br_pos)
+        box_max, box_min = utils.apply_rotation_to_points([box_max, box_min], br_ang, br_pos)
 
-    #print('box_max: %.02f %.02f %.02f' % (box_max[0], box_max[1], box_max[2]))
-    #print('box_min: %.02f %.02f %.02f' % (box_min[0], box_min[1], box_min[2]))
+    #utils.log_print(f'box_max: {box_max[0]} {box_max[1]} {box_max[2]}')
+    #utils.log_print(f'box_min: {box_min[0]} {box_min[1]} {box_min[2]}')
     return {'pos': br_pos, 'max': box_max, 'min': box_min, 'ang': br_ang}
 
 def filter_objs_by_obj_ids(obj_ids, objs):
@@ -115,65 +199,65 @@ def get_face_positions(faces, br):
         case tagfile.BR_PRIM_SPECIAL:
             match sprim_type:
                 case tagfile.BR_SPRIM_CUBE:
-                    #print('br_id: %d' % br['br_id'])
-                    #print('br_pos: %.02f %.02f %.02f' % (br_pos[0], br_pos[1], br_pos[2]))
-                    #print('br_sz: %.02f %.02f %.02f' % (br_sz[0], br_sz[1], br_sz[2]))
+                    #utils.log_print(f'br_id: {br["br_id"]}')
+                    #utils.log_print(f'br_pos: {br_pos[0]} {br_pos[1]} {br_pos[2]}')
+                    #utils.log_print(f'br_sz: {br_sz[0]} {br_sz[1]} {br_sz[2]}')
                     for face in faces:
                         match face:
                             case 0:
-                                #print('North')
+                                #utils.log_print('North')
                                 face_ul = [br_pos[0]-br_sz[0], br_pos[1]-br_sz[1], br_pos[2]+br_sz[2]]
                                 face_lr = [face_ul[0],         br_pos[1]+br_sz[1], br_pos[2]-br_sz[2]]
                             case 1:
-                                #print('West')
+                                #utils.log_print('West')
                                 face_ul = [br_pos[0]+br_sz[0], br_pos[1]-br_sz[1], br_pos[2]+br_sz[2]]
                                 face_lr = [br_pos[0]-br_sz[0], face_ul[1],         br_pos[2]-br_sz[2]]
                             case 2:
-                                #print('South')
+                                #utils.log_print('South')
                                 face_ul = [br_pos[0]+br_sz[0], br_pos[1]+br_sz[1], br_pos[2]+br_sz[2]]
                                 face_lr = [face_ul[0],         br_pos[1]-br_sz[1], br_pos[2]-br_sz[2]]
                             case 3:
-                                #print('East')
+                                #utils.log_print('East')
                                 face_ul = [br_pos[0]-br_sz[0], br_pos[1]+br_sz[1], br_pos[2]+br_sz[2]]
                                 face_lr = [br_pos[0]+br_sz[0], face_ul[1],         br_pos[2]-br_sz[2]]
                             case 4:
-                                #print('Top')
+                                #utils.log_print('Top')
                                 face_ul = [br_pos[0]+br_sz[0], br_pos[1]-br_sz[1], br_pos[2]+br_sz[2]]
                                 face_lr = [br_pos[0]-br_sz[0], br_pos[1]+br_sz[1], face_ul[2]]
                             case 5:
-                                #print('Bottom')
+                                #utils.log_print('Bottom')
                                 face_ul = [br_pos[0]-br_sz[0], br_pos[1]-br_sz[1], br_pos[2]-br_sz[2]]
                                 face_lr = [br_pos[0]+br_sz[0], br_pos[1]+br_sz[1], face_ul[2]]
                             case _:
-                                print_error('Cube "%s" somehow has more then 6 faces...' % br['br_id'])
+                                utils.log_print_error(f'Cube "{br["br_id"]}" somehow has more then 6 faces...')
                                 sys.exit(1)
                         if not (br_ang[0] == 0 and br_ang[1] == 0 and br_ang[2] == 0):
-                            face_ul, face_lr = apply_rotation_to_points([face_ul, face_lr], br_ang, br_pos)
+                            face_ul, face_lr = utils.apply_rotation_to_points([face_ul, face_lr], br_ang, br_pos)
                         #else:
-                            #print('face_ul: %.02f %.02f %.02f' % (face_ul[0], face_ul[1], face_ul[2]))
-                            #print('face_lr: %.02f %.02f %.02f' % (face_lr[0], face_lr[1], face_lr[2]))
+                            #utils.log_print(f'face_ul: {face_ul[0]} {face_ul[1]} {face_ul[2]}')
+                            #utils.log_print(f'face_lr: {face_lr[0]} {face_lr[1]} {face_lr[2]}')
                         face_positions.append({'ul': face_ul, 'lr': face_lr})
-                    #print()
+                    #utils.log_print()
                 case _:
-                    print_warning('Ignoring unhandled "%s" special primitive. br_id: %d' % (tagfile.get_br_sprim_name(sprim_type), br['br_id']))
+                    utils.log_print_warning(f'Ignoring unhandled "{tagfile.get_br_sprim_name(sprim_type)}" special primitive. br_id: {br["br_id"]}')
         case _:
-            print_warning('Ignoring unhandled "%s" primitive. br_id: %d' % (tagfile.get_br_prim_name(prim_type), br['br_id']))
+            utils.log_print_warning(f'Ignoring unhandled "{tagfile.get_br_prim_name(prim_type)}" primitive. br_id: {br["br_id"]}')
     return face_positions
 
 def get_window_lights(window_positions, window_light_candidates, inner_bound, outer_bound):
     window_lights = []
-    #print('%u window position(s).' % len(window_positions))
-    #print('%u face(s) to check.' % sum([len(wp['faces']) for wp in window_positions]))
-    #print('%u window light candidate(s).' % len(window_light_candidates))
+    #utils.log_print(f'{len(window_positions)} window position(s).')
+    #utils.log_print(f'{sum([len(wp["faces"]) for wp in window_positions])} face(s) to check.')
+    #utils.log_print(f'{len(window_light_candidates)} window light candidate(s).')
     for wp in window_positions:
-        #print('-'*80)
-        #print('brush id: %d' % wp['brush']['br_id'])
+        #utils.log_print('-'*80)
+        #utils.log_print(f'brush id: {wp["brush"]["br_id"]}')
         wlc_within_ob = []
-        #print('Outer box max/min:')
+        #utils.log_print('Outer box max/min:')
         outer_box = create_box_around_brush(wp['brush'], outer_bound)
         for wlc in window_light_candidates:
             if not (outer_box['ang'][0] == 0 and outer_box['ang'][1] == 0 and outer_box['ang'][2] == 0):
-                intersection = point_intersects_obb(
+                intersection = utils.point_intersects_obb(
                                    [wlc['pos']['x'], wlc['pos']['y'], wlc['pos']['z']],
                                    outer_box['ang'],
                                    outer_box['pos'],
@@ -182,7 +266,7 @@ def get_window_lights(window_positions, window_light_candidates, inner_bound, ou
                                    verbose=False
                                )
             else:
-                intersection = point_intersects_aabb(
+                intersection = utils.point_intersects_aabb(
                                    [wlc['pos']['x'], wlc['pos']['y'], wlc['pos']['z']],
                                    outer_box['max'],
                                    outer_box['min'],
@@ -191,19 +275,19 @@ def get_window_lights(window_positions, window_light_candidates, inner_bound, ou
             if intersection:
                 wlc_within_ob.append(wlc)
         if not wlc_within_ob:
-            #print('No window light candidate is within outer box -- skipping.')
+            #utils.log_print('No window light candidate is within outer box -- skipping.')
             continue
 
-        #print('%u window light candidate(s) are within outer box.' % len(wlc_within_ob))
+        #utils.log_print(f'{len(wlc_within_ob)} window light candidate(s) are within outer box.')
         #for wlc in wlc_within_ob:
         #    type_id = get_light_type_id(wlc)
-        #    print('    %s: %d' % (type_id, wlc[type_id]))
+        #    utils.log_print(f'    {type_id}: {wlc[type_id]}')
 
-        #print('%u face(s) to check:' % len(wp['faces']))
-        #print(wp['faces'])
+        #utils.log_print(f'{len(wp["faces"]} face(s) to check:')
+        #utils.log_print(wp['faces'])
         for fp in wp['face_pos']:
             for face in wp['faces']:
-                #print('Checking face idx %u.' % face)
+                #utils.log_print(f'Checking face idx {face}.')
                 inner_box = create_box_around_face(
                                 face,
                                 fp['ul'], fp['lr'],
@@ -218,7 +302,7 @@ def get_window_lights(window_positions, window_light_candidates, inner_bound, ou
                     if wlc[type_id] in searching_for_list:
                         continue
                     if not (inner_box['ang'][0] == 0 and inner_box['ang'][1] == 0 and inner_box['ang'][2] == 0):
-                        intersection = point_intersects_obb(
+                        intersection = utils.point_intersects_obb(
                                            [wlc['pos']['x'], wlc['pos']['y'], wlc['pos']['z']],
                                            inner_box['ang'],
                                            inner_box['pos'],
@@ -227,14 +311,14 @@ def get_window_lights(window_positions, window_light_candidates, inner_bound, ou
                                            verbose=False
                                        )
                     else:
-                        intersection = point_intersects_aabb(
+                        intersection = utils.point_intersects_aabb(
                                            [wlc['pos']['x'], wlc['pos']['y'], wlc['pos']['z']],
                                            inner_box['max'],
                                            inner_box['min'],
                                            verbose=False
                                        )
                     if intersection:
-                        #print('%s %d passes inner box test.' % (type_id, wlc[type_id]))
+                        #utils.log_print(f'{type_id} {wlc[type_id]} passes inner box test.')
                         window_lights.append(wlc)
 
     return window_lights
@@ -315,48 +399,47 @@ def get_dark_gam_version(oms):
 def get_gamesys_path(dirname, t1_root, t2_root, oms, fp):
     gam_name = tagfile.parse_gam_file(fp)['data']
     gam_path = dirname + '/' + tagfile.parse_gam_file(fp)['data']
+    gam_ver = get_dark_gam_version(oms)
+    utils.gv_queue.put_nowait(gam_ver)
     if not os.path.exists(gam_path):
-        gam_ver = get_dark_gam_version(oms)
         if gam_ver == 1 and t1_root:
             gam_path = t1_root + '/' + gam_name
         elif gam_ver == 2 and t2_root:
             gam_path = t2_root + '/' + gam_name
         else:
-            print_error('Cannot find gamesys "%s".' % gam_path)
-            print('You must specify where Thief %u\'s root directory is in "animlightify.cfg". Ex:' % gam_ver)
-            print('t%u_root = "<path/to/thief%u>"' % (gam_ver, gam_ver))
+            utils.log_print_error(f'Cannot find gamesys "{gam_path}".')
+            utils.log_print(f'You must specify where Thief {gam_ver}\'s root directory is in "animlightify.cfg". Ex:')
+            utils.log_print(f't{gam_ver}_root = "<path/to/thief{gam_ver}>"')
             sys.exit(1)
     return gam_path
 
 def main(args):
-    config_name = 'animlightify.cfg'
-    config = read_config(config_name)
-    if config == None:
-        print('Writing "%s".' % config_name)
-        with open(config_name, 'w') as fp:
-            config = dict()
-            shutil.copy2('sample.cfg', config_name)
-
     if len(args) < 2:
-        print_error('Specify the mission.')
-        return 1
+        import gui # <- This blocks and never returns.
 
-    cwd = os.getcwd()
+    utils.log_print(f'Animlightify v{version["string"]}')
+
+    cwd = os.getcwd().replace('\\', '/')
     prev_name = None
     cmd = []
     dml = []
     dml.append('DML1')
     dml.append('')
     fmt = '    %-27s %s'
-    inner_bound = 2.1  if 'inner_bound' not in config.keys() else float(config['inner_bound'])
-    outer_bound = 10.0 if 'outer_bound' not in config.keys() else float(config['outer_bound'])
-    wl_volume   = 0.5  if 'wl_volume'   not in config.keys() else float(config['wl_volume'])
-    t1_root     = ''   if 't1_root'     not in config.keys() else config['t1_root'].replace('\\', '/').rstrip('/')
-    t2_root     = ''   if 't2_root'     not in config.keys() else config['t2_root'].replace('\\', '/').rstrip('/')
+
+    t1_root = config['t1_root']['value']
+    t2_root = config['t2_root']['value']
+    outer_bound = config['outer_bound']['value']
+    inner_bound = config['inner_bound']['value']
+    wl_volume = config['wl_volume']['value']
 
     mis = args[1]
     dirname = os.path.dirname(mis)
-    fp = open(mis, 'rb')
+    if os.path.exists(mis):
+        fp = open(mis, 'rb')
+    else:
+        utils.log_print_error(f'Mission File "{mis}" not found.')
+        return 1
     tagfile.check_integrity(fp)
 
     oms = tagfile.parse_obj_map(fp)['data']
@@ -364,19 +447,23 @@ def main(args):
         mps_gam = tagfile.parse_lmetaprop(fp_gam)['data']
         sns_gam = tagfile.parse_psymname(fp_gam)['data']
 
+    utils.pb_queue.put_nowait(pb_incr)
     mps = tagfile.parse_lmetaprop(fp)['data']
     id_names = obj_ids_to_names(mps, sns_gam)
 
+    utils.pb_queue.put_nowait(pb_incr)
     light_objs = tagfile.parse_plight(fp)['data']
     light_objs = remove_zero_brightness_objs(light_objs)
     light_objs = add_name_to_objs_by_id(light_objs, 'obj_id', id_names)
     light_objs = sorted(light_objs, key=lambda d: d['name'])
 
+    utils.pb_queue.put_nowait(pb_incr)
     brushes = tagfile.parse_brlist(fp)['data']
     textures = tagfile.parse_txlist(fp)['data']
     glass_txs = get_tx_ids_by_archetype_name('GlassTex', sns_gam, mps_gam, id_names, textures)
     window_positions = get_window_positions(brushes, glass_txs)
 
+    utils.pb_queue.put_nowait(pb_incr)
     hacklight_obj_ids = get_obj_ids_by_archetype_name('HackLight', sns_gam, mps, mps_gam, id_names)
     light_objs = add_pos_to_objs_from_brlist(light_objs, brushes)
     plights = filter_objs_by_obj_ids(hacklight_obj_ids, light_objs)
@@ -385,8 +472,9 @@ def main(args):
     window_lights = get_window_lights(window_positions, window_light_candidates, inner_bound, outer_bound)
     #for light in window_lights:
     #    type_id = get_light_type_id(light)
-    #    print('%s: %d' % (type_id, light[type_id]))
+    #    utils.log_print(f'{type_id}: {light[type_id])}')
 
+    utils.pb_queue.put_nowait(pb_incr)
     window_plights = []
     window_brlights = []
     for wl in window_lights:
@@ -401,16 +489,16 @@ def main(args):
     # Handle replacing all brush lights with anim lights.
     comment = 'Replace all brush lights'
     if brlights:
-        dml.append('// %s %s' % (comment, '-'*(80-len(comment)-3)))
+        dml.append(f'// {comment} {"-"*(80-len(comment)-3)}')
     for br in brlights:
-        cmd.append('brush_select %s' % br['br_id'])
+        cmd.append(f'brush_select {br["br_id"]}')
         cmd.append('delete_brush')
-        cmd.append('mprint deleted brush light %s' % br['br_id'])
+        cmd.append(f'mprint deleted brush light {br["br_id"]}')
         dml.append('Create "OmniLightPoint"')
         dml.append('{')
         dml.append('    +ObjProp "Position"')
         dml.append('    {')
-        dml.append('        "Location" %f, %f, %f' % (br['pos']['x'], br['pos']['y'], br['pos']['z']))
+        dml.append(f'        "Location" {br["pos"]["x"]}, {br["pos"]["y"]}, {br["pos"]["z"]}')
         dml.append('    }')
         dml.append('    -ObjProp "Light"')
         dml.append('    +ObjProp "AnimLight"')
@@ -441,10 +529,10 @@ def main(args):
             comment = obj['name'].split()
             comment = comment[1] if len(comment) > 1 else comment[0]
             comment += '(s)'
-            dml.append('// %s %s' % (comment, '-'*(80-len(comment)-3)))
+            dml.append(f'// {comment} {"-"*(80-len(comment)-3)}')
             prev_name = obj['name']
-        dml.append('-ObjProp %s "Light"' % obj['obj_id'])
-        dml.append('+ObjProp %s "AnimLight"' % obj['obj_id'])
+        dml.append(f'-ObjProp {obj["obj_id"]} "Light"')
+        dml.append(f'+ObjProp {obj["obj_id"]} "AnimLight"')
         dml.append('{')
         dml.append(fmt % ('"Mode"', '"maximum brightness"'))
         dml.append(fmt % ('"max brightness"', obj['brightness']))
@@ -453,18 +541,18 @@ def main(args):
             dml.append(fmt % ('"inner radius (0 for none)"', obj['inner_radius']))
         if 'quad' in obj.keys():
             dml.append(fmt % ('"quad lit"', obj['quad']))
-        dml.append(fmt % ('"offset from object"', '%f, %f, %f' % (obj['offset']['x'], obj['offset']['y'], obj['offset']['z'])))
+        dml.append(fmt % ('"offset from object"', f'{obj["offset"]["x"]}, {obj["offset"]["y"]}, {obj["offset"]["z"]}'))
         dml.append('}')
         for window_plight in window_plights:
             if obj['obj_id'] == window_plight['obj_id']:
-                dml.append('+ObjProp %s "HwtlLight"' % obj['obj_id'])
+                dml.append(f'+ObjProp {obj["obj_id"]} "HwtlLight"')
                 dml.append('{')
                 dml.append(fmt % ('"volume"', wl_volume))
                 dml.append('}')
                 break
         dml.append('')
 
-    cmd.append('dbmod_load %s/animlightify.dml' % cwd)
+    cmd.append(f'dbmod_load {cwd}/animlightify.dml')
     cmd.append('run Cmds/DoLight.cmd')
 
     fp.close()
@@ -477,13 +565,15 @@ def main(args):
         for l in cmd:
             fp.write(l+'\n')
 
-    print('%u brush light(s) and %u light prop(s) to be replaced.' % (len(brlights), len(light_objs)))
-    print('%u brush light(s) and %u hack light(s) detected as window lights.' % (len(window_brlights), len(window_plights)))
-    print('Window light params: outer_bound=%.02f, inner_bound=%.02f, wl_volume=%.02f' % (outer_bound, inner_bound, wl_volume))
-    print()
-    print('Run animlightify.cmd in Dromed by using the command prompt:\nrun %s/animlightify.cmd' % cwd)
-    print()
-    print('For additional instructions, please refer to README.md')
+    utils.log_print(f'{len(brlights)} brush light(s) and {len(light_objs)} light prop(s) to be replaced.')
+    utils.log_print(f'{len(window_brlights)} brush light(s) and {len(window_plights)} hack light(s) detected as window lights.')
+    utils.log_print(f'Window light params: outer_bound={outer_bound}, inner_bound={inner_bound}, wl_volume={wl_volume}')
+    utils.log_print()
+    utils.log_print(f'Run animlightify.cmd in Dromed by using the command prompt:\nrun {cwd}/animlightify.cmd')
+    utils.log_print()
+    utils.log_print('For additional instructions, please refer to README.md')
+
+    return 0
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
