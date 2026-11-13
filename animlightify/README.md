@@ -26,6 +26,8 @@ Optional: Animlightify will output the path you will need for the `run` command,
 Press ENTER and Dromed will do the real processing. When it finishes, save the mission to some other location (unless you want the changes to be permanent). A config file (`animlightify.cfg`) will be written to disk which will allow you to override certain variables, if you so desire. There is no longer a good reason to add any comments to the config file. In GUI mode, the config file is very strictly managed and will be sanitized at program exit.
 
 ### GUI
+![avif](https://github.com/user-attachments/assets/671623c7-fcc3-46d0-a138-4fdba245d7c6)
+
 Run Animlightify without specifying any arguments to access GUI mode. If you are using the packaged exe variant, just double-click on `Animlightify.exe`.
 
 ### Important
